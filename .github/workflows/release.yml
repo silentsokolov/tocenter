@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    name: Publish for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        name: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - name: ubuntu-latest
+            os: ubuntu-latest
+            rust: stable
+            target: x86_64-unknown-linux-gnu
+            artifact_name: tocenter
+            suffix_asset_name: linux-amd64.tar.gz
+          - name: windows-latest
+            os: windows-latest
+            rust: stable
+            target: x86_64-pc-windows-msvc
+            artifact_name: tocenter
+            suffix_asset_name: windows-amd64.zip
+          - name: macos-latest
+            os: macos-latest
+            rust: stable
+            target: x86_64-apple-darwin
+            artifact_name: tocenter
+            suffix_asset_name: darwin-amd64.tar.gz
+
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+
+    - name: Setup Rust
+      uses: hecrj/setup-rust-action@v1
+      with:
+        rust-version: ${{ matrix.rust }}
+        targets: ${{ matrix.target }}
+
+    - name: Install Linux Packages
+      if: matrix.os == 'ubuntu-latest'
+      run: sudo apt install -y --no-install-recommends libasound2-dev libudev-dev pkg-config
+
+    - name: Cache Rust Dependencies (Unix)
+      if: matrix.os != 'windows-latest'
+      uses: actions/cache@v1.0.1
+      with:
+        path: target
+        key: ${{ matrix.os }}-build-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ matrix.os }}-build-
+
+    - name: Cache Rust Dependencies (Win)
+      if: matrix.os == 'windows-latest'
+      uses: actions/cache@v1.0.1
+      with:
+        path: target
+        key: ${{ matrix.os }}-build-${{ hashFiles('**\Cargo.lock') }}
+        restore-keys: |
+          ${{ matrix.os }}-build-
+
+    - name: Build
+      run: cargo build --release --locked --target ${{ matrix.target }}
+
+    - name: Compress Tar
+      if: matrix.os != 'windows-latest'
+      shell: bash
+      run: |
+        cd target/${{ matrix.target }}/release
+        tar czvf ../../../${{ matrix.suffix_asset_name }} ${{ matrix.artifact_name }}
+        cd -
+
+    - name: Compress Zip
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: |
+        cd target/${{ matrix.target }}/release
+        7z a ../../../${{ matrix.suffix_asset_name }} ${{ matrix.artifact_name }}.exe
+        cd -
+
+    - name: Get Version
+      id: get_version
+      shell: bash
+      run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/v}
+
+    - name: Publish
+      uses: svenstaro/upload-release-action@v1-release
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: ${{ matrix.suffix_asset_name }}
+        asset_name: ${{ matrix.artifact_name }}-${{ steps.get_version.outputs.VERSION }}-${{ matrix.suffix_asset_name }}
+        tag: ${{ github.ref }}
