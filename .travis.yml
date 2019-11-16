@@ -11,5 +11,11 @@ matrix:
   allow_failures:
     - rust: nightly
 
+before_install:
+  - if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
+      sudo apt-get -qq update
+      && sudo apt-get install -y libasound2-dev libudev-dev;
+    fi
+
 script:
     cargo test --verbose --all
