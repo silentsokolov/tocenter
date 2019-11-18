@@ -36,9 +36,7 @@ impl<'a> System<'a> for UpdatePosition {
             Some(KeyCode::L) | Some(KeyCode::Right) | Some(KeyCode::Numpad6) => {
                 Some(Direction::Right(consts::HORIZONTAL_SPEED))
             }
-            Some(KeyCode::K) | Some(KeyCode::Down) | Some(KeyCode::Numpad2) => {
-                Some(Direction::Down)
-            }
+            Some(KeyCode::K) | Some(KeyCode::Down) | Some(KeyCode::Numpad2) => None,
             Some(KeyCode::J) | Some(KeyCode::Up) | Some(KeyCode::Numpad8) => Some(Direction::Up),
             Some(_) => None,
             None => None,
@@ -198,7 +196,10 @@ impl<'a> System<'a> for Collision {
                     if p.current_level < p.next_level
                         && self.is_radius_collision(p.angle, *start, *end)
                     {
-                        // TODO: Backward
+                        let s = sound.enemy.as_mut().unwrap();
+                        s.play().unwrap();
+                        pl.take_life();
+                        p.set_default_player();
                         break;
                     }
                     if p.radius < space_radius
