@@ -66,7 +66,7 @@ jobs:
           ${{ matrix.os }}-build-
 
     - name: Build
-      run: cargo build --release --target ${{ matrix.target }}
+      run: cargo build --release --locked --target ${{ matrix.target }}
 
     - name: Compress Tar
       if: matrix.os != 'windows-latest'
