@@ -13,8 +13,8 @@ jobs:
       matrix:
         name: [ubuntu-latest, windows-latest, macos-latest]
         include:
-          - name: ubuntu-latest
-            os: ubuntu-latest
+          - name: linux-latest
+            os: ubuntu-16.04
             rust: stable
             target: x86_64-unknown-linux-gnu
             artifact_name: tocenter
@@ -44,7 +44,7 @@ jobs:
         targets: ${{ matrix.target }}
 
     - name: Install Linux Packages
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.name == 'linux-latest'
       run: sudo apt install -y --no-install-recommends libasound2-dev libudev-dev pkg-config
 
     - name: Cache Rust Dependencies (Unix)
