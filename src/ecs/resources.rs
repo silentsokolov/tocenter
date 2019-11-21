@@ -27,6 +27,7 @@ impl Default for KeyState {
 
 pub struct GameState {
     pub game_level: u32,
+    pub score: u64,
     pub status: Option<utils::GameStatus>,
     pub theme: utils::Theme,
     pub control: utils::Control,
@@ -36,10 +37,18 @@ impl Default for GameState {
     fn default() -> Self {
         GameState {
             game_level: 1,
+            score: 0,
             status: None,
             theme: utils::Theme::Dark,
             control: utils::Control::Normal,
         }
+    }
+}
+
+impl GameState {
+    pub fn reset_result(&mut self) {
+        self.game_level = 1;
+        self.score = 0;
     }
 }
 
@@ -116,15 +125,16 @@ pub struct MenuItem {
 
 #[derive(Default, Debug)]
 pub struct Menu {
-    pub name: String,
+    pub title: String,
+    pub subtitle: String,
     pub items: Vec<MenuItem>,
     pub current_item: usize,
 }
 
 impl Menu {
-    pub fn new(name: String) -> Self {
+    pub fn new(title: String) -> Self {
         let mut m = Self::default();
-        m.name = name;
+        m.title = title;
         m
     }
 

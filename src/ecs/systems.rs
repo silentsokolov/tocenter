@@ -442,9 +442,10 @@ impl<'c> GameRender<'c> {
         );
     }
 
-    pub fn render_game_lvl(
+    pub fn render_game_result(
         &mut self,
         lvl: u32,
+        score: u64,
         size: (f32, f32),
         theme: &Theme,
         font: graphics::Font,
@@ -456,10 +457,24 @@ impl<'c> GameRender<'c> {
             scale: Some(graphics::Scale::uniform(30.0)),
         });
 
+        let score = graphics::Text::new(graphics::TextFragment {
+            text: format!("Score: {}", score),
+            color: Some(Colour::Fg.value(theme)),
+            font: Some(font),
+            scale: Some(graphics::Scale::uniform(30.0)),
+        });
+
         graphics::queue_text(
             self.ctx,
             &level,
-            na::Point2::new(size.0 * 2.0 - 150.0, 20.0),
+            na::Point2::new(size.0 * 2.0 - 155.0, 20.0),
+            None,
+        );
+
+        graphics::queue_text(
+            self.ctx,
+            &score,
+            na::Point2::new(size.0 * 2.0 - 155.0, 50.0),
             None,
         );
     }
@@ -478,8 +493,8 @@ impl<'a, 'c> System<'a> for GameRender<'c> {
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (entities, font, gs, gt, enemy, pos, view, player) = data;
-        let f = font.base.unwrap();
+        let (entities, rfont, gs, gt, enemy, pos, view, player) = data;
+        let font = rfont.base.unwrap();
 
         let size = graphics::drawable_size(self.ctx);
 
@@ -568,9 +583,9 @@ impl<'a, 'c> System<'a> for GameRender<'c> {
             gt.timer.subsec_millis(),
             size,
             &gs.theme,
-            f,
+            font,
         );
-        self.render_game_lvl(gs.game_level, size, &gs.theme, f);
+        self.render_game_result(gs.game_level, gs.score, size, &gs.theme, font);
 
         graphics::draw_queued_text(
             self.ctx,
@@ -654,7 +669,7 @@ impl<'a, 'c> System<'a> for MenuRender<'c> {
         let font = font.base.unwrap();
 
         let text = graphics::Text::new(graphics::TextFragment {
-            text: menu.name.to_uppercase(),
+            text: menu.title.to_uppercase(),
             color: Some(Colour::Fg.value(&gs.theme)),
             font: Some(font),
             scale: Some(graphics::Scale::uniform(60.0)),
@@ -662,6 +677,17 @@ impl<'a, 'c> System<'a> for MenuRender<'c> {
         graphics::queue_text(self.ctx, &text, na::Point2::new(0.0, 0.0), None);
 
         let mut y = 100.0;
+
+        if menu.subtitle != "" {
+            y += 80.0;
+            let text = graphics::Text::new(graphics::TextFragment {
+                text: menu.subtitle.to_lowercase(),
+                color: Some(Colour::White.value(&gs.theme)),
+                font: Some(font),
+                scale: Some(graphics::Scale::uniform(40.0)),
+            });
+            graphics::queue_text(self.ctx, &text, na::Point2::new(0.0, 100.0), None);
+        }
 
         for (i, item) in menu.items.iter().enumerate() {
             y += 30.0 + item.height;

@@ -11,7 +11,7 @@ The game available on windows / macOS / linux. [Download latest release](https:/
 
 #### Linux users
 
-Not all libraries support [musl](https://www.musl-libc.org/) (like `girls-core`). It is impossible to make a fully static binary. You will need `glibc>=2.23` and `alsa` for start game. (`alsa` is `libasound2-dev` on Debian, `alsa-lib-devel` on CentOS, `alsa-lib-dev` on Alpine)
+Not all libraries support [musl](https://www.musl-libc.org/) (like `girls-core`). It is impossible to make a fully static binary. You will need `glibc>=2.23` and `alsa` for start game. (`alsa` is `libasound2-dev` in Debian, `alsa-lib-devel` in CentOS, `alsa-lib-dev` in Alpine)
 
 ## screenshot
 

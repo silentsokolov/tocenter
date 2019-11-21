@@ -5,7 +5,7 @@ use ggez::input::keyboard::{KeyCode, KeyMods};
 use ggez::{Context, GameResult};
 use specs::prelude::*;
 
-use crate::ecs::resources::{Action, Menu};
+use crate::ecs::resources::{Action, GameState, Menu};
 use crate::ecs::systems::{MenuRender, UpdateGlobalState, UpdateMenu};
 use crate::scenes::curtain::CurtainScene;
 use crate::scenes::game::GameScene;
@@ -20,6 +20,9 @@ impl<'a, 'b> GameOverScene<'a, 'b> {
         let mut menu = Menu::new("game over".to_string());
         menu.add_item(Action::Continue, "continue".to_string(), 10.0, true);
         menu.add_item(Action::Quit, "quit".to_string(), 60.0, true);
+
+        let score = world.fetch::<GameState>().score;
+        menu.subtitle = format!("score{:.>9}", score);
 
         world.insert(menu);
 
@@ -56,13 +59,16 @@ impl<'a, 'b> Scene for GameOverScene<'a, 'b> {
         if keycode == KeyCode::Return {
             let action = world.fetch::<Menu>().get_currect_action();
             match action {
-                Action::Continue => Ok(Transition::MultiReplace(
-                    vec![
-                        Box::new(GameScene::new(ctx, world)),
-                        Box::new(CurtainScene::new(world, true)),
-                    ],
-                    1,
-                )),
+                Action::Continue => {
+                    world.fetch_mut::<GameState>().reset_result();
+                    Ok(Transition::MultiReplace(
+                        vec![
+                            Box::new(GameScene::new(ctx, world)),
+                            Box::new(CurtainScene::new(world, true)),
+                        ],
+                        1,
+                    ))
+                }
                 Action::Quit => {
                     event::quit(ctx);
                     Ok(Transition::None)
