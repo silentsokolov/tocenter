@@ -75,8 +75,10 @@ impl<'a, 'b> Scene for GameScene<'a, 'b> {
     fn update(&mut self, ctx: &mut Context, world: &mut World) -> Result<Transition, String> {
         self.dispatcher.dispatch(world);
 
-        let s = world.fetch::<GameState>().status.clone();
-        match s {
+        let status = world.fetch::<GameState>().status.clone();
+        let score = world.fetch::<GameTime>().timer.as_secs();
+
+        match status {
             Some(GameStatus::GameOver) => {
                 world.delete_all();
                 world.maintain();
@@ -90,6 +92,7 @@ impl<'a, 'b> Scene for GameScene<'a, 'b> {
                 world.maintain();
                 world.fetch_mut::<GameState>().status = None;
                 world.fetch_mut::<GameState>().game_level += 1;
+                world.fetch_mut::<GameState>().score += score;
                 Ok(Transition::Push(Box::new(CurtainScene::new(world, false))))
             }
             None => Ok(Transition::None),

@@ -337,7 +337,8 @@ pub fn get_dir(keycode: Option<KeyCode>, angle: f32, horizontal_speed: f32) -> O
             //     Some(Direction::Left(horizontal_speed))
             // }
             if angle >= PI * 0.0 && angle <= PI * 1.0 {
-                Some(Direction::Down)
+                // Some(Direction::Down)
+                None
             } else {
                 Some(Direction::Up)
             }
@@ -355,7 +356,8 @@ pub fn get_dir(keycode: Option<KeyCode>, angle: f32, horizontal_speed: f32) -> O
             if angle >= PI * 0.0 && angle <= PI * 1.0 {
                 Some(Direction::Up)
             } else {
-                Some(Direction::Down)
+                // Some(Direction::Down)
+                None
             }
         }
         Some(_) => None,
