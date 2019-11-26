@@ -141,7 +141,16 @@ fn main() {
         .window_setup(
             conf::WindowSetup::default()
                 .title("ToCenter")
-                .samples(conf::NumSamples::Four),
+                .samples(if cfg!(target_os = "windows") {
+                    conf::NumSamples::Two
+                } else {
+                    conf::NumSamples::Four
+                })
+                .vsync(if cfg!(target_os = "windows") {
+                    false
+                } else {
+                    true
+                }),
         )
         .window_mode(
             conf::WindowMode::default()
