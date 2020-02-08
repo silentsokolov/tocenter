@@ -16,6 +16,8 @@ pub enum Form {
 #[storage(VecStorage)]
 pub struct Player {
     pub life: u32,
+    pub speed: f32,
+    pub speed_press_ms: f32,
     pub start_angle_repeat: f32,
 }
 

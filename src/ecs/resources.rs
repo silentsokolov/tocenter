@@ -55,6 +55,7 @@ impl GameState {
 #[derive(Debug)]
 pub struct GameTime {
     pub last_instant: Option<time::Instant>,
+    pub delta: time::Duration,
     pub timer: time::Duration,
 }
 
@@ -62,6 +63,7 @@ impl Default for GameTime {
     fn default() -> Self {
         Self {
             last_instant: None,
+            delta: time::Duration::new(0, 0),
             timer: time::Duration::new(GAME_TIME, 0),
         }
     }

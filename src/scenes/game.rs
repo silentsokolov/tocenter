@@ -5,7 +5,7 @@ use ggez::{Context, GameResult};
 use rand::Rng;
 use specs::prelude::*;
 
-use crate::consts::{PLAYER_LIFE, PLAYER_START_ANGLE, PLAYER_START_LEVEL};
+use crate::consts::{HORIZONTAL_SPEED_MIN, PLAYER_LIFE, PLAYER_START_ANGLE, PLAYER_START_LEVEL};
 use crate::ecs::components::{ConstantMovement, Enemy, Form, Player, Position, View};
 use crate::ecs::resources::{GameState, GameTime};
 use crate::ecs::systems::{Collision, GameRender, UpdateGameState, UpdatePosition, UpdateTimer};
@@ -32,6 +32,8 @@ impl<'a, 'b> GameScene<'a, 'b> {
             })
             .with(Player {
                 life: PLAYER_LIFE,
+                speed: HORIZONTAL_SPEED_MIN,
+                speed_press_ms: 0.0,
                 start_angle_repeat: PLAYER_START_ANGLE,
             })
             .build();

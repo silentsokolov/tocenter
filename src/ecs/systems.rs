@@ -21,28 +21,33 @@ impl<'a> System<'a> for UpdatePosition {
     type SystemData = (
         Read<'a, GameState>,
         Read<'a, KeyState>,
+        Read<'a, GameTime>,
         WriteStorage<'a, Player>,
         ReadStorage<'a, ConstantMovement>,
         WriteStorage<'a, Position>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (gs, ks, mut player, conmove, mut pos) = data;
-
-        let mut dir = match ks.key {
-            Some(KeyCode::H) | Some(KeyCode::Left) | Some(KeyCode::Numpad4) => {
-                Some(Direction::Left(consts::HORIZONTAL_SPEED))
-            }
-            Some(KeyCode::L) | Some(KeyCode::Right) | Some(KeyCode::Numpad6) => {
-                Some(Direction::Right(consts::HORIZONTAL_SPEED))
-            }
-            Some(KeyCode::K) | Some(KeyCode::Down) | Some(KeyCode::Numpad2) => None,
-            Some(KeyCode::J) | Some(KeyCode::Up) | Some(KeyCode::Numpad8) => Some(Direction::Up),
-            Some(_) => None,
-            None => None,
-        };
+        let (gs, ks, gt, mut player, conmove, mut pos) = data;
 
         for (pl, pos) in (&mut player, &mut pos).join() {
+            let mut dir = match ks.key {
+                Some(KeyCode::H) | Some(KeyCode::Left) | Some(KeyCode::Numpad4) => {
+                    UpdatePosition::set_speed_boost(pl, ks.repeat, gt.delta);
+                    Some(Direction::Left(pl.speed))
+                }
+                Some(KeyCode::L) | Some(KeyCode::Right) | Some(KeyCode::Numpad6) => {
+                    UpdatePosition::set_speed_boost(pl, ks.repeat, gt.delta);
+                    Some(Direction::Right(pl.speed))
+                }
+                Some(KeyCode::K) | Some(KeyCode::Down) | Some(KeyCode::Numpad2) => None,
+                Some(KeyCode::J) | Some(KeyCode::Up) | Some(KeyCode::Numpad8) => {
+                    Some(Direction::Up)
+                }
+                Some(_) => None,
+                None => None,
+            };
+
             if !ks.repeat {
                 pl.start_angle_repeat = pos.angle;
             }
@@ -59,6 +64,17 @@ impl<'a> System<'a> for UpdatePosition {
 }
 
 impl UpdatePosition {
+    pub fn set_speed_boost(pl: &mut Player, repeat: bool, delta: time::Duration) {
+        if repeat {
+            pl.speed_press_ms += delta.subsec_millis() as f32;
+            let u = (pl.speed_press_ms / 100.0).ceil() / 100.0;
+            pl.speed = (consts::HORIZONTAL_SPEED_MIN + u).min(consts::HORIZONTAL_SPEED_MAX);
+        } else {
+            pl.speed_press_ms = 0.0;
+            pl.speed = consts::HORIZONTAL_SPEED_MIN;
+        }
+    }
+
     pub fn to_move(&self, pos: &mut Position, dir: Option<Direction>) {
         if pos.is_between_level() {
             self.update_radius(pos);
@@ -294,10 +310,10 @@ impl<'a> System<'a> for UpdateTimer {
             gt.last_instant = Some(time::Instant::now())
         }
         let now = time::Instant::now();
-        let delta = now - gt.last_instant.expect("last instant is none");
+        gt.delta = now - gt.last_instant.expect("last instant is none");
         gt.last_instant = Some(now);
 
-        if let Some(delta) = gt.timer.checked_sub(delta) {
+        if let Some(delta) = gt.timer.checked_sub(gt.delta) {
             gt.timer = delta;
             return;
         };
