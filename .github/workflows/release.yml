@@ -19,19 +19,6 @@ jobs:
             target: x86_64-unknown-linux-gnu
             artifact_name: tocenter
             suffix_asset_name: linux-amd64.tar.gz
-          - name: windows-latest
-            os: windows-latest
-            rust: stable
-            target: x86_64-pc-windows-msvc
-            artifact_name: tocenter
-            suffix_asset_name: windows-amd64.zip
-          - name: macos-latest
-            os: macos-latest
-            rust: stable
-            target: x86_64-apple-darwin
-            artifact_name: tocenter
-            suffix_asset_name: darwin-amd64.tar.gz
-
 
     steps:
     - name: Checkout
