@@ -5,12 +5,14 @@ use std::time;
 use ggez::audio::SoundSource;
 use ggez::event::KeyCode;
 use ggez::graphics::{self, DrawMode, MeshBuilder};
-use ggez::nalgebra as na;
+use ggez::mint as mt;
 use ggez::Context;
 use specs::prelude::*;
 
 use crate::consts;
-use crate::ecs::components::{ConstantMovement, Enemy, Form, Player, Position, View};
+use crate::ecs::components::{
+    CollisionType, ConstantMovement, Enemy, Form, Player, Position, View,
+};
 use crate::ecs::resources::{Curtain, Font, GameState, GameTime, KeyState, Menu, Sound};
 use crate::shapes;
 use crate::utils::{self, Colour, Control, Direction, GameStatus, Theme};
@@ -124,7 +126,6 @@ pub struct Collision;
 impl<'a> System<'a> for Collision {
     type SystemData = (
         Entities<'a>,
-        Write<'a, Sound>,
         WriteStorage<'a, Player>,
         ReadStorage<'a, Enemy>,
         ReadStorage<'a, View>,
@@ -132,7 +133,7 @@ impl<'a> System<'a> for Collision {
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (entities, mut sound, mut player, enemy, view, mut position) = data;
+        let (entities, mut player, enemy, view, mut position) = data;
 
         let find_levels = (&player, &mut position)
             .join()
@@ -174,8 +175,7 @@ impl<'a> System<'a> for Collision {
                             utils::normalize_angle(player_points[1].y.atan2(player_points[1].x));
                         p.angle = (pa - p.angle) + sa;
                         if *is_enemy {
-                            let s = sound.enemy.as_mut().unwrap();
-                            s.play().unwrap();
+                            pl.collision = Some(CollisionType::Enemy);
                             pl.take_life();
                             p.set_default_player();
                         }
@@ -186,8 +186,7 @@ impl<'a> System<'a> for Collision {
                             utils::normalize_angle(player_points[3].y.atan2(player_points[3].x));
                         p.angle = sa - (p.angle - pa);
                         if *is_enemy {
-                            let s = sound.enemy.as_mut().unwrap();
-                            s.play().unwrap();
+                            pl.collision = Some(CollisionType::Enemy);
                             pl.take_life();
                             p.set_default_player();
                         }
@@ -198,13 +197,11 @@ impl<'a> System<'a> for Collision {
                         && self.is_radius_collision(p.angle, *start, *end)
                     {
                         if *is_enemy {
-                            let s = sound.enemy.as_mut().unwrap();
-                            s.play().unwrap();
+                            pl.collision = Some(CollisionType::Enemy);
                             pl.take_life();
                             p.set_default_player();
                         } else {
-                            let s = sound.wall.as_mut().unwrap();
-                            s.play().unwrap();
+                            pl.collision = Some(CollisionType::Wall);
                             p.swap_level();
                         }
                         break;
@@ -212,8 +209,7 @@ impl<'a> System<'a> for Collision {
                     if p.current_level < p.next_level
                         && self.is_radius_collision(p.angle, *start, *end)
                     {
-                        let s = sound.enemy.as_mut().unwrap();
-                        s.play().unwrap();
+                        pl.collision = Some(CollisionType::Enemy);
                         pl.take_life();
                         p.set_default_player();
                         break;
@@ -223,13 +219,11 @@ impl<'a> System<'a> for Collision {
                             || self.is_body_collision(*end, &player_points))
                     {
                         if *is_enemy {
-                            let s = sound.enemy.as_mut().unwrap();
-                            s.play().unwrap();
+                            pl.collision = Some(CollisionType::Enemy);
                             pl.take_life();
                             p.set_default_player();
                         } else {
-                            let s = sound.wall.as_mut().unwrap();
-                            s.play().unwrap();
+                            pl.collision = Some(CollisionType::Wall);
                             p.swap_level();
                         }
                         break;
@@ -256,15 +250,18 @@ impl Collision {
         m < e
     }
 
-    pub fn make_point(&self, angle: f32, radius: f32) -> na::Point2<f32> {
-        na::Point2::new(angle.cos() * radius, angle.sin() * radius)
+    pub fn make_point(&self, angle: f32, radius: f32) -> mt::Point2<f32> {
+        mt::Point2 {
+            x: angle.cos() * radius,
+            y: angle.sin() * radius,
+        }
     }
 
     pub fn is_radius_collision(
         &self,
         mid: f32,
-        start: na::Point2<f32>,
-        end: na::Point2<f32>,
+        start: mt::Point2<f32>,
+        end: mt::Point2<f32>,
     ) -> bool {
         let start = utils::normalize_angle(start.y.atan2(start.x));
         let end = utils::normalize_angle(end.y.atan2(end.x));
@@ -275,7 +272,7 @@ impl Collision {
         false
     }
 
-    pub fn is_body_collision(&self, point: na::Point2<f32>, triangle: &[na::Point2<f32>]) -> bool {
+    pub fn is_body_collision(&self, point: mt::Point2<f32>, triangle: &[mt::Point2<f32>]) -> bool {
         if self.collision_point_in_triangle(point, triangle[0], triangle[1], triangle[3]) {
             return true;
         }
@@ -284,10 +281,10 @@ impl Collision {
 
     pub fn collision_point_in_triangle(
         &self,
-        p: na::Point2<f32>,
-        p0: na::Point2<f32>,
-        p1: na::Point2<f32>,
-        p2: na::Point2<f32>,
+        p: mt::Point2<f32>,
+        p0: mt::Point2<f32>,
+        p1: mt::Point2<f32>,
+        p2: mt::Point2<f32>,
     ) -> bool {
         let a =
             1.0 / 2.0 * (-p1.y * p2.x + p0.y * (-p1.x + p2.x) + p0.x * (p1.y - p2.y) + p1.x * p2.y);
@@ -303,7 +300,7 @@ impl Collision {
 pub struct UpdateTimer;
 
 impl<'a> System<'a> for UpdateTimer {
-    type SystemData = (Write<'a, GameTime>);
+    type SystemData = Write<'a, GameTime>;
 
     fn run(&mut self, mut gt: Self::SystemData) {
         if gt.last_instant.is_none() {
@@ -380,7 +377,7 @@ impl<'a> System<'a> for UpdateGlobalState {
 pub struct UpdateCurtain;
 
 impl<'a> System<'a> for UpdateCurtain {
-    type SystemData = (Write<'a, Curtain>);
+    type SystemData = Write<'a, Curtain>;
 
     fn run(&mut self, mut curtain: Self::SystemData) {
         curtain.radius += curtain.constriction;
@@ -430,14 +427,14 @@ impl<'c> GameRender<'c> {
             text: format!("{:0>2}", secs),
             color: Some(Colour::Bg.value(theme)),
             font: Some(font),
-            scale: Some(graphics::Scale::uniform(70.0)),
+            scale: Some(graphics::PxScale::from(70.0)),
         });
 
         let timer_millis = graphics::Text::new(graphics::TextFragment {
             text: format!("{:0>3}", millis),
             color: Some(Colour::Bg.value(theme)),
             font: Some(font),
-            scale: Some(graphics::Scale::uniform(20.0)),
+            scale: Some(graphics::PxScale::from(20.0)),
         });
 
         let x = size.0;
@@ -447,13 +444,19 @@ impl<'c> GameRender<'c> {
         graphics::queue_text(
             self.ctx,
             &timer_secs,
-            na::Point2::new(x + -33.0, y + -40.0),
+            mt::Point2 {
+                x: x + -33.0,
+                y: y + -40.0,
+            },
             None,
         );
         graphics::queue_text(
             self.ctx,
             &timer_millis,
-            na::Point2::new(x + -14.0, y + 20.0),
+            mt::Point2 {
+                x: x + -14.0,
+                y: y + 20.0,
+            },
             None,
         );
     }
@@ -470,27 +473,33 @@ impl<'c> GameRender<'c> {
             text: format!("Level: {}", lvl),
             color: Some(Colour::Fg.value(theme)),
             font: Some(font),
-            scale: Some(graphics::Scale::uniform(30.0)),
+            scale: Some(graphics::PxScale::from(30.0)),
         });
 
         let score = graphics::Text::new(graphics::TextFragment {
             text: format!("Score: {}", score),
             color: Some(Colour::Fg.value(theme)),
             font: Some(font),
-            scale: Some(graphics::Scale::uniform(30.0)),
+            scale: Some(graphics::PxScale::from(30.0)),
         });
 
         graphics::queue_text(
             self.ctx,
             &level,
-            na::Point2::new(size.0 * 2.0 - 155.0, 20.0),
+            mt::Point2 {
+                x: size.0 * 2.0 - 155.0,
+                y: 20.0,
+            },
             None,
         );
 
         graphics::queue_text(
             self.ctx,
             &score,
-            na::Point2::new(size.0 * 2.0 - 155.0, 50.0),
+            mt::Point2 {
+                x: size.0 * 2.0 - 155.0,
+                y: 50.0,
+            },
             None,
         );
     }
@@ -518,11 +527,12 @@ impl<'a, 'c> System<'a> for GameRender<'c> {
 
         mesh.circle(
             DrawMode::fill(),
-            na::Point2::new(0.0, 0.0),
+            mt::Point2 { x: 0.0, y: 0.0 },
             utils::get_level_radius(0) - 12.0,
             consts::DEFAULT_TOLERANCE,
             Colour::White.value(&gs.theme),
-        );
+        )
+        .unwrap();
 
         // GameRender life
         for p in (&player).join() {
@@ -537,11 +547,12 @@ impl<'a, 'c> System<'a> for GameRender<'c> {
             {
                 mesh.circle(
                     DrawMode::stroke(2.0),
-                    na::Point2::new(0.0, 0.0),
+                    mt::Point2 { x: 0.0, y: 0.0 },
                     utils::get_level_radius(0) - x as f32,
                     consts::DEFAULT_TOLERANCE,
                     color,
-                );
+                )
+                .unwrap();
             }
         }
 
@@ -589,7 +600,10 @@ impl<'a, 'c> System<'a> for GameRender<'c> {
         graphics::draw(
             self.ctx,
             &ms,
-            (na::Point2::new(size.0 / 2.0, size.1 / 2.0),),
+            (mt::Point2 {
+                x: size.0 / 2.0,
+                y: size.1 / 2.0,
+            },),
         )
         .unwrap();
 
@@ -606,8 +620,8 @@ impl<'a, 'c> System<'a> for GameRender<'c> {
         graphics::draw_queued_text(
             self.ctx,
             graphics::DrawParam::default()
-                .dest(na::Point2::new(0.0, 0.0))
-                .scale(na::Vector2::new(0.5, 0.5)), // https://github.com/ggez/ggez/issues/263
+                .dest(mt::Point2 { x: 0.0, y: 0.0 })
+                .scale(mt::Vector2 { x: 0.5, y: 0.5 }), // https://github.com/ggez/ggez/issues/263
             None,
             graphics::FilterMode::Nearest,
         )
@@ -649,11 +663,12 @@ impl<'a, 'c> System<'a> for CurtainRender<'c> {
 
         mesh.circle(
             DrawMode::stroke(4.0),
-            na::Point2::new(0.0, 0.0),
+            mt::Point2 { x: 0.0, y: 0.0 },
             curtain.radius,
             consts::DEFAULT_TOLERANCE,
             Colour::Border.value(&gs.theme),
-        );
+        )
+        .unwrap();
 
         let ms = mesh.build(self.ctx).unwrap();
 
@@ -662,7 +677,10 @@ impl<'a, 'c> System<'a> for CurtainRender<'c> {
         graphics::draw(
             self.ctx,
             &ms,
-            (curtain.point + na::Vector2::new(size.0 / 2.0, size.1 / 2.0),),
+            (mt::Vector2 {
+                x: curtain.point.x + size.0 / 2.0,
+                y: curtain.point.x + size.1 / 2.0,
+            },),
         )
         .unwrap();
     }
@@ -688,9 +706,9 @@ impl<'a, 'c> System<'a> for MenuRender<'c> {
             text: menu.title.to_uppercase(),
             color: Some(Colour::Fg.value(&gs.theme)),
             font: Some(font),
-            scale: Some(graphics::Scale::uniform(60.0)),
+            scale: Some(graphics::PxScale::from(60.0)),
         });
-        graphics::queue_text(self.ctx, &text, na::Point2::new(0.0, 0.0), None);
+        graphics::queue_text(self.ctx, &text, mt::Point2 { x: 0.0, y: 0.0 }, None);
 
         let mut y = 100.0;
 
@@ -700,9 +718,9 @@ impl<'a, 'c> System<'a> for MenuRender<'c> {
                 text: menu.subtitle.to_lowercase(),
                 color: Some(Colour::White.value(&gs.theme)),
                 font: Some(font),
-                scale: Some(graphics::Scale::uniform(40.0)),
+                scale: Some(graphics::PxScale::from(40.0)),
             });
-            graphics::queue_text(self.ctx, &text, na::Point2::new(0.0, 100.0), None);
+            graphics::queue_text(self.ctx, &text, mt::Point2 { x: 0.0, y: 100.0 }, None);
         }
 
         for (i, item) in menu.items.iter().enumerate() {
@@ -723,37 +741,81 @@ impl<'a, 'c> System<'a> for MenuRender<'c> {
                     Some(Colour::Gray.value(&gs.theme))
                 },
                 font: Some(font),
-                scale: Some(graphics::Scale::uniform(40.0)),
+                scale: Some(graphics::PxScale::from(40.0)),
             });
-            graphics::queue_text(self.ctx, &text, na::Point2::new(0.0, y), None);
+            graphics::queue_text(self.ctx, &text, mt::Point2 { x: 0.0, y: y }, None);
         }
 
         let text = graphics::Text::new(graphics::TextFragment {
             text: format!("[F2] control: {}", gs.control),
             color: Some(Colour::Fg.value(&gs.theme)),
             font: Some(font),
-            scale: Some(graphics::Scale::uniform(25.0)),
+            scale: Some(graphics::PxScale::from(25.0)),
         });
-        graphics::queue_text(self.ctx, &text, na::Point2::new(-300.0, 550.0), None);
+        graphics::queue_text(
+            self.ctx,
+            &text,
+            mt::Point2 {
+                x: -300.0,
+                y: 550.0,
+            },
+            None,
+        );
 
         let text = graphics::Text::new(graphics::TextFragment {
             text: format!("[F3] theme: {}", gs.theme),
             color: Some(Colour::Fg.value(&gs.theme)),
             font: Some(font),
-            scale: Some(graphics::Scale::uniform(25.0)),
+            scale: Some(graphics::PxScale::from(25.0)),
         });
-        graphics::queue_text(self.ctx, &text, na::Point2::new(0.0, 550.0), None);
+        graphics::queue_text(self.ctx, &text, mt::Point2 { x: 0.0, y: 550.0 }, None);
 
         let size = graphics::drawable_size(self.ctx);
 
         graphics::draw_queued_text(
             self.ctx,
             graphics::DrawParam::default()
-                .dest(na::Point2::new(size.0 / 2.0 - 90.0, size.1 / 2.0 - 50.0))
-                .scale(na::Vector2::new(0.5, 0.5)), // https://github.com/ggez/ggez/issues/263
+                .dest(mt::Point2 {
+                    x: size.0 / 2.0 - 90.0,
+                    y: size.1 / 2.0 - 50.0,
+                })
+                .scale(mt::Vector2 { x: 0.5, y: 0.5 }), // https://github.com/ggez/ggez/issues/263
             None,
             graphics::FilterMode::Nearest,
         )
         .unwrap();
+    }
+}
+
+pub struct Music<'c> {
+    ctx: &'c mut Context,
+}
+
+impl<'c> Music<'c> {
+    pub fn new(ctx: &'c mut Context) -> Music<'c> {
+        Music { ctx }
+    }
+}
+
+impl<'a, 'c> System<'a> for Music<'c> {
+    type SystemData = (Write<'a, Sound>, WriteStorage<'a, Player>);
+
+    fn run(&mut self, data: Self::SystemData) {
+        let (mut sound, mut player) = data;
+
+        for p in (&mut player).join() {
+            match p.collision {
+                Some(CollisionType::Enemy) => {
+                    let s = sound.enemy.as_mut().unwrap();
+                    s.play(self.ctx).unwrap();
+                }
+                Some(CollisionType::Wall) => {
+                    let s = sound.wall.as_mut().unwrap();
+                    s.play(self.ctx).unwrap();
+                }
+                None => {}
+            }
+            p.collision = None;
+        }
     }
 }

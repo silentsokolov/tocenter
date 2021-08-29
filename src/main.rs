@@ -17,8 +17,8 @@ use ggez::audio;
 use ggez::event::{self, EventHandler};
 use ggez::graphics::{self};
 use ggez::input::keyboard::{KeyCode, KeyMods};
-use ggez::{conf, timer, Context, ContextBuilder, GameResult};
-use log::{error, info};
+use ggez::{conf, error::GameError, timer, Context, ContextBuilder, GameResult};
+use log::info;
 use scenes::{menu::MenuScene, stack::SceneStack};
 use specs::prelude::*;
 
@@ -62,7 +62,7 @@ impl MainState {
     }
 }
 
-impl EventHandler for MainState {
+impl EventHandler<GameError> for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
         while timer::check_update_time(ctx, consts::DESIRED_FPS) {
             self.scenes.update(ctx, &mut self.world)?;
@@ -81,12 +81,12 @@ impl EventHandler for MainState {
 
         #[cfg(debug_assertions)]
         {
-            use ggez::nalgebra as na;
+            use ggez::mint as mt;
 
             let fps = timer::fps(ctx);
             let text = graphics::Text::new(format!("FPS: {:.0}", fps));
 
-            graphics::draw(ctx, &text, (na::Point2::new(0.0, 0.0),))?;
+            graphics::draw(ctx, &text, (mt::Point2 { x: 0.0, y: 0.0 },))?;
         }
 
         self.scenes.draw(ctx, &mut self.world)?;
@@ -171,16 +171,13 @@ fn main() {
         cb = cb.add_zipfile_bytes(include_bytes!("../resources.zip").to_vec());
     }
 
-    let (ctx, event_loop) = &mut cb.build().unwrap();
+    let (mut ctx, event_loop) = cb.build().unwrap();
 
-    graphics::set_window_icon(ctx, Some(fix_path(ctx, "128x128.ico"))).unwrap();
+    // graphics::set_window_icon(&mut ctx, Some(fix_path(&mut ctx, "128x128.ico"))).unwrap();
 
     // Create game state
-    let mut state = MainState::new(ctx);
+    let state = MainState::new(&mut ctx);
 
     // Run
-    match event::run(ctx, event_loop, &mut state) {
-        Ok(_) => info!("Exited cleanly."),
-        Err(e) => error!("Exit with error: {}", e),
-    }
+    event::run(ctx, event_loop, state)
 }

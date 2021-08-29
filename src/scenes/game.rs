@@ -8,7 +8,9 @@ use specs::prelude::*;
 use crate::consts::{HORIZONTAL_SPEED_MIN, PLAYER_LIFE, PLAYER_START_ANGLE, PLAYER_START_LEVEL};
 use crate::ecs::components::{ConstantMovement, Enemy, Form, Player, Position, View};
 use crate::ecs::resources::{GameState, GameTime};
-use crate::ecs::systems::{Collision, GameRender, UpdateGameState, UpdatePosition, UpdateTimer};
+use crate::ecs::systems::{
+    Collision, GameRender, Music, UpdateGameState, UpdatePosition, UpdateTimer,
+};
 use crate::scenes::curtain::CurtainScene;
 use crate::scenes::gameover::GameOverScene;
 use crate::scenes::pause::PauseScene;
@@ -35,6 +37,7 @@ impl<'a, 'b> GameScene<'a, 'b> {
                 speed: HORIZONTAL_SPEED_MIN,
                 speed_press_ms: 0.0,
                 start_angle_repeat: PLAYER_START_ANGLE,
+                collision: None,
             })
             .build();
 
@@ -66,7 +69,7 @@ impl<'a, 'b> GameScene<'a, 'b> {
             .with(UpdateTimer, "time_system", &[])
             .with(UpdatePosition, "pos_system", &["time_system"])
             .with(Collision, "collision_system", &["pos_system"])
-            .with(UpdateGameState, "game_system", &["collision_system"])
+            .with(UpdateGameState, "game_system", &["time_system"])
             .build();
         dispatcher.setup(world);
         Self { dispatcher }
@@ -76,6 +79,9 @@ impl<'a, 'b> GameScene<'a, 'b> {
 impl<'a, 'b> Scene for GameScene<'a, 'b> {
     fn update(&mut self, ctx: &mut Context, world: &mut World) -> Result<Transition, String> {
         self.dispatcher.dispatch(world);
+        // context :(
+        let mut mrs = Music::new(ctx);
+        mrs.run_now(world);
 
         let status = world.fetch::<GameState>().status.clone();
         let score = world.fetch::<GameTime>().timer.as_secs();
@@ -102,8 +108,8 @@ impl<'a, 'b> Scene for GameScene<'a, 'b> {
     }
 
     fn draw(&mut self, ctx: &mut Context, world: &mut World) -> GameResult {
-        let mut rs = GameRender::new(ctx);
-        rs.run_now(world);
+        let mut rrs = GameRender::new(ctx);
+        rrs.run_now(world);
         Ok(())
     }
 

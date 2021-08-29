@@ -47,7 +47,7 @@ impl Colour {
     pub fn value(&self, t: &Theme) -> Color {
         match t {
             Theme::Dark => match self {
-                Colour::White => graphics::WHITE,
+                Colour::White => graphics::Color::WHITE,
                 Colour::Bg => Color {
                     r: 0.12,
                     g: 0.14,
@@ -116,7 +116,7 @@ impl Colour {
                 },
             },
             Theme::Light => match self {
-                Colour::White => graphics::BLACK,
+                Colour::White => graphics::Color::BLACK,
                 Colour::Bg => Color {
                     r: 0.98,
                     g: 0.98,

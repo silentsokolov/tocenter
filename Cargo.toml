@@ -5,7 +5,7 @@ authors = ["Dmitriy Sokolov <silentsokolov@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-ggez = "0.5.1"
+ggez = "0.6.0"
 log = "0.4.8"
 env_logger = "0.6.2"
 specs = "0.15.0"

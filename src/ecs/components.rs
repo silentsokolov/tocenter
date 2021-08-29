@@ -12,6 +12,12 @@ pub enum Form {
     Circle,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum CollisionType {
+    Wall,
+    Enemy,
+}
+
 #[derive(Component, Debug)]
 #[storage(VecStorage)]
 pub struct Player {
@@ -19,6 +25,7 @@ pub struct Player {
     pub speed: f32,
     pub speed_press_ms: f32,
     pub start_angle_repeat: f32,
+    pub collision: Option<CollisionType>,
 }
 
 impl Player {

@@ -3,7 +3,7 @@ use std::time;
 use ggez::audio;
 use ggez::event::{KeyCode, KeyMods};
 use ggez::graphics;
-use ggez::nalgebra as na;
+use ggez::mint as mt;
 
 use crate::consts::{GAME_TIME, PLAYER_START_ANGLE, PLAYER_START_LEVEL};
 use crate::utils;
@@ -72,7 +72,7 @@ impl Default for GameTime {
 #[derive(Debug)]
 pub struct Curtain {
     pub radius: f32,
-    pub point: na::Point2<f32>,
+    pub point: mt::Point2<f32>,
     pub constriction: f32,
 }
 
@@ -80,7 +80,7 @@ impl Default for Curtain {
     fn default() -> Self {
         Self {
             radius: 0.0,
-            point: na::Point2::new(0.0, 0.0),
+            point: mt::Point2 { x: 0.0, y: 0.0 },
             constriction: 7.0,
         }
     }
@@ -92,10 +92,10 @@ impl Curtain {
 
         Self {
             radius: 15.0,
-            point: na::Point2::new(
-                PLAYER_START_ANGLE.cos() * player_radius,
-                PLAYER_START_ANGLE.sin() * player_radius,
-            ),
+            point: mt::Point2 {
+                x: PLAYER_START_ANGLE.cos() * player_radius,
+                y: PLAYER_START_ANGLE.sin() * player_radius,
+            },
             constriction: 7.0,
         }
     }
@@ -103,7 +103,7 @@ impl Curtain {
     pub fn new_center() -> Self {
         Self {
             radius: 500.0,
-            point: na::Point2::new(0.0, 0.0),
+            point: mt::Point2 { x: 0.0, y: 0.0 },
             constriction: -7.0,
         }
     }
