@@ -2,7 +2,7 @@ use std::f32::consts::PI;
 use std::fmt;
 
 use ggez::graphics::{self, Color};
-use ggez::{event::KeyCode, filesystem, Context};
+use ggez::input::keyboard::KeyCode;
 use rand::prelude::*;
 use rand::seq::SliceRandom;
 
@@ -188,7 +188,7 @@ impl Colour {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Theme {
     Light,
     Dark,
@@ -203,7 +203,7 @@ impl fmt::Display for Theme {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Control {
     Normal,
     Advanced,
@@ -251,7 +251,7 @@ pub fn create_map_of_element(level: usize) -> Vec<(f32, f32)> {
     let magic_number = 2;
     let amount_element = 8 + level;
 
-    let amount_full_element = rng.gen_range(amount_element / 2, amount_element / 2 + magic_number);
+    let amount_full_element = rng.gen_range(amount_element / 2..amount_element / 2 + magic_number);
     let mut map_of_element = vec![1; amount_full_element];
     let zero_vec = vec![0; amount_element - map_of_element.len()];
     map_of_element.extend_from_slice(&zero_vec);
@@ -304,7 +304,7 @@ pub fn get_dir(keycode: Option<KeyCode>, angle: f32, horizontal_speed: f32) -> O
             // } else {
             //     Some(Direction::Up)
             // }
-            if angle >= PI * 0.0 && angle <= PI * 1.0 {
+            if (PI * 0.0..=PI * 1.0).contains(&angle) {
                 Some(Direction::Left(horizontal_speed))
             } else {
                 Some(Direction::Right(horizontal_speed))
@@ -320,7 +320,7 @@ pub fn get_dir(keycode: Option<KeyCode>, angle: f32, horizontal_speed: f32) -> O
             // } else {
             //     Some(Direction::Down)
             // }
-            if angle >= PI * 0.0 && angle <= PI * 1.0 {
+            if (PI * 0.0..=PI * 1.0).contains(&angle) {
                 Some(Direction::Right(horizontal_speed))
             } else {
                 Some(Direction::Left(horizontal_speed))
@@ -336,7 +336,7 @@ pub fn get_dir(keycode: Option<KeyCode>, angle: f32, horizontal_speed: f32) -> O
             // } else {
             //     Some(Direction::Left(horizontal_speed))
             // }
-            if angle >= PI * 0.0 && angle <= PI * 1.0 {
+            if (PI * 0.0..=PI * 1.0).contains(&angle) {
                 // Some(Direction::Down)
                 None
             } else {
@@ -353,7 +353,7 @@ pub fn get_dir(keycode: Option<KeyCode>, angle: f32, horizontal_speed: f32) -> O
             // } else {
             //     Some(Direction::Right(horizontal_speed))
             // }
-            if angle >= PI * 0.0 && angle <= PI * 1.0 {
+            if (PI * 0.0..=PI * 1.0).contains(&angle) {
                 Some(Direction::Up)
             } else {
                 // Some(Direction::Down)
@@ -362,15 +362,5 @@ pub fn get_dir(keycode: Option<KeyCode>, angle: f32, horizontal_speed: f32) -> O
         }
         Some(_) => None,
         None => None,
-    }
-}
-
-pub fn fix_path(ctx: &Context, path: &str) -> String {
-    let slash_path = String::from("/") + path;
-
-    if filesystem::is_file(ctx, &slash_path) || filesystem::is_dir(ctx, &slash_path) {
-        slash_path
-    } else {
-        String::from(path)
     }
 }

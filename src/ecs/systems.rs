@@ -3,8 +3,9 @@ use std::convert::TryInto;
 use std::time;
 
 use ggez::audio::SoundSource;
-use ggez::event::KeyCode;
+use ggez::graphics::DrawParam;
 use ggez::graphics::{self, DrawMode, MeshBuilder};
+use ggez::input::keyboard::KeyCode;
 use ggez::mint as mt;
 use ggez::Context;
 use specs::prelude::*;
@@ -13,7 +14,7 @@ use crate::consts;
 use crate::ecs::components::{
     CollisionType, ConstantMovement, Enemy, Form, Player, Position, View,
 };
-use crate::ecs::resources::{Curtain, Font, GameState, GameTime, KeyState, Menu, Sound};
+use crate::ecs::resources::{Curtain, GameState, GameTime, KeyState, Menu, Sound};
 use crate::shapes;
 use crate::utils::{self, Colour, Control, Direction, GameStatus, Theme};
 
@@ -397,7 +398,7 @@ impl<'a> System<'a> for UpdateMenu {
             Some(KeyCode::J) | Some(KeyCode::Up) | Some(KeyCode::Numpad8) => {
                 if let Some(x) = menu.current_item.checked_sub(1) {
                     menu.current_item = x;
-                    return;
+                    // return;
                 };
             }
             Some(_) => (),
@@ -417,90 +418,55 @@ impl<'c> GameRender<'c> {
 
     pub fn render_timer(
         &mut self,
+        canvas: &mut graphics::Canvas,
         secs: u64,
         millis: u32,
         size: (f32, f32),
         theme: &Theme,
-        font: graphics::Font,
     ) {
-        let timer_secs = graphics::Text::new(graphics::TextFragment {
-            text: format!("{:0>2}", secs),
-            color: Some(Colour::Bg.value(theme)),
-            font: Some(font),
-            scale: Some(graphics::PxScale::from(70.0)),
-        });
-
-        let timer_millis = graphics::Text::new(graphics::TextFragment {
-            text: format!("{:0>3}", millis),
-            color: Some(Colour::Bg.value(theme)),
-            font: Some(font),
-            scale: Some(graphics::PxScale::from(20.0)),
-        });
-
-        let x = size.0;
-        let y = size.1;
-
-        // TODO: Fix hard size
-        graphics::queue_text(
-            self.ctx,
-            &timer_secs,
-            mt::Point2 {
-                x: x + -33.0,
-                y: y + -40.0,
-            },
-            None,
+        canvas.draw(
+            graphics::Text::new(format!("{:0>2}", secs))
+                .set_font("Monaco")
+                .set_scale(100.),
+            DrawParam::default()
+                .dest([size.0 / 2. - 48., size.1 / 2. - 60.])
+                .color(Colour::Bg.value(theme)),
         );
-        graphics::queue_text(
-            self.ctx,
-            &timer_millis,
-            mt::Point2 {
-                x: x + -14.0,
-                y: y + 20.0,
-            },
-            None,
+
+        canvas.draw(
+            graphics::Text::new(format!("{:0>3}", millis))
+                .set_font("Monaco")
+                .set_scale(40.),
+            DrawParam::default()
+                .dest([size.0 / 2. - 30., size.1 / 2. + 20.])
+                .color(Colour::Bg.value(theme)),
         );
     }
 
     pub fn render_game_result(
         &mut self,
+        canvas: &mut graphics::Canvas,
         lvl: u32,
         score: u64,
         size: (f32, f32),
         theme: &Theme,
-        font: graphics::Font,
     ) {
-        let level = graphics::Text::new(graphics::TextFragment {
-            text: format!("Level: {}", lvl),
-            color: Some(Colour::Fg.value(theme)),
-            font: Some(font),
-            scale: Some(graphics::PxScale::from(30.0)),
-        });
-
-        let score = graphics::Text::new(graphics::TextFragment {
-            text: format!("Score: {}", score),
-            color: Some(Colour::Fg.value(theme)),
-            font: Some(font),
-            scale: Some(graphics::PxScale::from(30.0)),
-        });
-
-        graphics::queue_text(
-            self.ctx,
-            &level,
-            mt::Point2 {
-                x: size.0 * 2.0 - 155.0,
-                y: 20.0,
-            },
-            None,
+        canvas.draw(
+            graphics::Text::new(format!("Level: {}", lvl))
+                .set_font("Monaco")
+                .set_scale(30.),
+            DrawParam::default()
+                .dest([size.0 - size.0 / 8., 5.])
+                .color(Colour::Fg.value(theme)),
         );
 
-        graphics::queue_text(
-            self.ctx,
-            &score,
-            mt::Point2 {
-                x: size.0 * 2.0 - 155.0,
-                y: 50.0,
-            },
-            None,
+        canvas.draw(
+            graphics::Text::new(format!("Score: {}", score))
+                .set_font("Monaco")
+                .set_scale(30.),
+            DrawParam::default()
+                .dest([size.0 - size.0 / 8., 30.])
+                .color(Colour::Fg.value(theme)),
         );
     }
 }
@@ -508,7 +474,6 @@ impl<'c> GameRender<'c> {
 impl<'a, 'c> System<'a> for GameRender<'c> {
     type SystemData = (
         Entities<'a>,
-        Read<'a, Font>,
         Read<'a, GameState>,
         Read<'a, GameTime>,
         ReadStorage<'a, Enemy>,
@@ -518,16 +483,16 @@ impl<'a, 'c> System<'a> for GameRender<'c> {
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (entities, rfont, gs, gt, enemy, pos, view, player) = data;
-        let font = rfont.base.unwrap();
+        let (entities, gs, gt, enemy, pos, view, player) = data;
+        let mut canvas = graphics::Canvas::from_frame(self.ctx, Colour::Bg.value(&gs.theme));
 
-        let size = graphics::drawable_size(self.ctx);
+        let size = self.ctx.gfx.size();
 
         let mesh = &mut MeshBuilder::new();
 
         mesh.circle(
             DrawMode::fill(),
-            mt::Point2 { x: 0.0, y: 0.0 },
+            [0., 0.],
             utils::get_level_radius(0) - 12.0,
             consts::DEFAULT_TOLERANCE,
             Colour::White.value(&gs.theme),
@@ -536,18 +501,17 @@ impl<'a, 'c> System<'a> for GameRender<'c> {
 
         // GameRender life
         for p in (&player).join() {
-            let color = if p.life < 2 {
-                Colour::LifeL.value(&gs.theme)
-            } else if p.life == 2 {
-                Colour::LifeM.value(&gs.theme)
-            } else {
-                Colour::Life.value(&gs.theme)
+            let life = p.life;
+            let color = match life {
+                life if life < 2 => Colour::LifeL.value(&gs.theme),
+                2 => Colour::LifeM.value(&gs.theme),
+                _ => Colour::Life.value(&gs.theme),
             };
             for x in (0..p.life * consts::LIFE_SIZE).step_by(consts::LIFE_SIZE.try_into().unwrap())
             {
                 mesh.circle(
                     DrawMode::stroke(2.0),
-                    mt::Point2 { x: 0.0, y: 0.0 },
+                    [0., 0.],
                     utils::get_level_radius(0) - x as f32,
                     consts::DEFAULT_TOLERANCE,
                     color,
@@ -596,36 +560,25 @@ impl<'a, 'c> System<'a> for GameRender<'c> {
             }
         }
 
-        let ms = mesh.build(self.ctx).unwrap();
-        graphics::draw(
-            self.ctx,
-            &ms,
-            (mt::Point2 {
-                x: size.0 / 2.0,
-                y: size.1 / 2.0,
-            },),
-        )
-        .unwrap();
+        let ms = mesh.build();
 
+        canvas.draw(
+            &graphics::Mesh::from_data(self.ctx, ms),
+            DrawParam::default()
+                .dest([size.0 / 2., size.1 / 2.])
+                .color(Colour::Fg.value(&gs.theme)),
+        );
         // GameRender text
         self.render_timer(
+            &mut canvas,
             gt.timer.as_secs(),
             gt.timer.subsec_millis(),
             size,
             &gs.theme,
-            font,
         );
-        self.render_game_result(gs.game_level, gs.score, size, &gs.theme, font);
+        self.render_game_result(&mut canvas, gs.game_level, gs.score, size, &gs.theme);
 
-        graphics::draw_queued_text(
-            self.ctx,
-            graphics::DrawParam::default()
-                .dest(mt::Point2 { x: 0.0, y: 0.0 })
-                .scale(mt::Vector2 { x: 0.5, y: 0.5 }), // https://github.com/ggez/ggez/issues/263
-            None,
-            graphics::FilterMode::Nearest,
-        )
-        .unwrap();
+        canvas.finish(self.ctx).unwrap();
     }
 }
 
@@ -643,13 +596,17 @@ impl<'a, 'c> System<'a> for CurtainRender<'c> {
     type SystemData = (Read<'a, GameState>, Read<'a, Curtain>);
 
     fn run(&mut self, (gs, curtain): Self::SystemData) {
+        // println!("{:?} {:?} {:?}", gs.theme, curtain.radius, Colour::Border.value(&gs.theme));
+        // let mut canvas = graphics::Canvas::from_frame(self.ctx, Colour::Bg.value(&gs.theme));
         let mesh = &mut MeshBuilder::new();
+
+        let size = self.ctx.gfx.size();
 
         let points = shapes::arc(
             curtain.radius,
             0.0,
             consts::PI_2,
-            1000.0,
+            1000.0 + size.1, // remove
             false,
             consts::DEFAULT_TOLERANCE,
         );
@@ -663,26 +620,24 @@ impl<'a, 'c> System<'a> for CurtainRender<'c> {
 
         mesh.circle(
             DrawMode::stroke(4.0),
-            mt::Point2 { x: 0.0, y: 0.0 },
+            [0., 0.],
             curtain.radius,
             consts::DEFAULT_TOLERANCE,
             Colour::Border.value(&gs.theme),
         )
         .unwrap();
 
-        let ms = mesh.build(self.ctx).unwrap();
+        mesh.build();
+        // let ms = mesh.build();
 
-        let size = graphics::drawable_size(self.ctx);
+        // canvas.draw(
+        //     &graphics::Mesh::from_data(self.ctx, ms),
+        //     DrawParam::default()
+        //         .dest([curtain.point.x + 500., curtain.point.y + 500. / 2.])
+        //         .color(Colour::Fg.value(&gs.theme)),
+        // );
 
-        graphics::draw(
-            self.ctx,
-            &ms,
-            (mt::Vector2 {
-                x: curtain.point.x + size.0 / 2.0,
-                y: curtain.point.x + size.1 / 2.0,
-            },),
-        )
-        .unwrap();
+        // canvas.finish(self.ctx).unwrap();
     }
 }
 
@@ -697,93 +652,78 @@ impl<'c> MenuRender<'c> {
 }
 
 impl<'a, 'c> System<'a> for MenuRender<'c> {
-    type SystemData = (Read<'a, Font>, Read<'a, GameState>, Read<'a, Menu>);
+    type SystemData = (Read<'a, GameState>, Read<'a, Menu>);
 
-    fn run(&mut self, (font, gs, menu): Self::SystemData) {
-        let font = font.base.unwrap();
+    fn run(&mut self, (gs, menu): Self::SystemData) {
+        let mut canvas = graphics::Canvas::from_frame(self.ctx, Colour::Bg.value(&gs.theme));
 
-        let text = graphics::Text::new(graphics::TextFragment {
-            text: menu.title.to_uppercase(),
-            color: Some(Colour::Fg.value(&gs.theme)),
-            font: Some(font),
-            scale: Some(graphics::PxScale::from(60.0)),
-        });
-        graphics::queue_text(self.ctx, &text, mt::Point2 { x: 0.0, y: 0.0 }, None);
+        let mut y = 300.;
 
-        let mut y = 100.0;
+        canvas.draw(
+            graphics::Text::new(menu.title.to_uppercase())
+                .set_font("Monaco")
+                .set_scale(60.),
+            DrawParam::default()
+                .dest([360., y])
+                .color(Colour::Fg.value(&gs.theme)),
+        );
 
-        if menu.subtitle != "" {
+        if !menu.subtitle.is_empty() {
             y += 80.0;
-            let text = graphics::Text::new(graphics::TextFragment {
-                text: menu.subtitle.to_lowercase(),
-                color: Some(Colour::White.value(&gs.theme)),
-                font: Some(font),
-                scale: Some(graphics::PxScale::from(40.0)),
-            });
-            graphics::queue_text(self.ctx, &text, mt::Point2 { x: 0.0, y: 100.0 }, None);
+            canvas.draw(
+                graphics::Text::new(menu.subtitle.to_lowercase())
+                    .set_font("Monaco")
+                    .set_scale(60.),
+                DrawParam::default()
+                    .dest([360., y])
+                    .color(Colour::Fg.value(&gs.theme)),
+            );
         }
 
+        y += 60.0;
         for (i, item) in menu.items.iter().enumerate() {
             y += 30.0 + item.height;
-            let text = graphics::Text::new(graphics::TextFragment {
-                text: if menu.current_item == i {
+            canvas.draw(
+                graphics::Text::new(if menu.current_item == i {
                     format!("> [{}]", item.text)
                 } else {
                     format!("   {}", item.text)
-                },
-                color: if item.available {
-                    if menu.current_item == i {
-                        Some(Colour::Special.value(&gs.theme))
+                })
+                .set_font("Monaco")
+                .set_scale(40.),
+                DrawParam::default()
+                    .dest([360., y])
+                    .color(if item.available {
+                        if menu.current_item == i {
+                            Colour::Special.value(&gs.theme)
+                        } else {
+                            Colour::Fg.value(&gs.theme)
+                        }
                     } else {
-                        Some(Colour::Fg.value(&gs.theme))
-                    }
-                } else {
-                    Some(Colour::Gray.value(&gs.theme))
-                },
-                font: Some(font),
-                scale: Some(graphics::PxScale::from(40.0)),
-            });
-            graphics::queue_text(self.ctx, &text, mt::Point2 { x: 0.0, y: y }, None);
+                        Colour::Gray.value(&gs.theme)
+                    }),
+            );
         }
 
-        let text = graphics::Text::new(graphics::TextFragment {
-            text: format!("[F2] control: {}", gs.control),
-            color: Some(Colour::Fg.value(&gs.theme)),
-            font: Some(font),
-            scale: Some(graphics::PxScale::from(25.0)),
-        });
-        graphics::queue_text(
-            self.ctx,
-            &text,
-            mt::Point2 {
-                x: -300.0,
-                y: 550.0,
-            },
-            None,
+        canvas.draw(
+            graphics::Text::new(format!("[F2] control: {}", gs.control))
+                .set_font("Monaco")
+                .set_scale(25.),
+            DrawParam::default()
+                .dest([450., 950.])
+                .color(Colour::Fg.value(&gs.theme)),
         );
 
-        let text = graphics::Text::new(graphics::TextFragment {
-            text: format!("[F3] theme: {}", gs.theme),
-            color: Some(Colour::Fg.value(&gs.theme)),
-            font: Some(font),
-            scale: Some(graphics::PxScale::from(25.0)),
-        });
-        graphics::queue_text(self.ctx, &text, mt::Point2 { x: 0.0, y: 550.0 }, None);
+        canvas.draw(
+            graphics::Text::new(format!("[F3] theme: {}", gs.theme))
+                .set_font("Monaco")
+                .set_scale(25.),
+            DrawParam::default()
+                .dest([750., 950.])
+                .color(Colour::Fg.value(&gs.theme)),
+        );
 
-        let size = graphics::drawable_size(self.ctx);
-
-        graphics::draw_queued_text(
-            self.ctx,
-            graphics::DrawParam::default()
-                .dest(mt::Point2 {
-                    x: size.0 / 2.0 - 90.0,
-                    y: size.1 / 2.0 - 50.0,
-                })
-                .scale(mt::Vector2 { x: 0.5, y: 0.5 }), // https://github.com/ggez/ggez/issues/263
-            None,
-            graphics::FilterMode::Nearest,
-        )
-        .unwrap();
+        canvas.finish(self.ctx).unwrap();
     }
 }
 

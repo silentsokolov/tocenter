@@ -6,13 +6,13 @@ use specs::{prelude::*, Component};
 use crate::consts::{PLAYER_START_ANGLE, PLAYER_START_LEVEL};
 use crate::utils::{self, Direction};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Form {
     Triangle,
     Circle,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum CollisionType {
     Wall,
     Enemy,

@@ -1,4 +1,4 @@
-use zip;
+// use zip;
 
 use std::io::prelude::*;
 use std::io::{Seek, Write};
@@ -30,7 +30,7 @@ fn zip_dir<T>(
 where
     T: Write + Seek,
 {
-    let mut zip = zip::ZipWriter::new(writer);
+    let mut zip_writer = zip::ZipWriter::new(writer);
     let options = FileOptions::default()
         .compression_method(method)
         .unix_permissions(0o755);
@@ -42,18 +42,18 @@ where
 
         if path.is_file() {
             println!("build-resources={:?}={:?}", path, name);
-            zip.start_file_from_path(name, options)?;
+            zip_writer.start_file(String::from(name.to_string_lossy()), options)?;
             let mut f = File::open(path)?;
 
             f.read_to_end(&mut buffer)?;
-            zip.write_all(&*buffer)?;
+            zip_writer.write_all(&*buffer)?;
             buffer.clear();
-        } else if name.as_os_str().len() != 0 {
+        } else if !name.as_os_str().is_empty() {
             println!("build-resources={:?}={:?}", path, name);
-            zip.add_directory_from_path(name, options)?;
+            zip_writer.start_file(String::from(name.to_string_lossy()), options)?;
         }
     }
-    zip.finish()?;
+    zip_writer.finish()?;
     Result::Ok(())
 }
 
@@ -71,7 +71,7 @@ fn make_zip(
 
     let file = File::create(&path).unwrap();
 
-    let walkdir = WalkDir::new(src_dir.to_string());
+    let walkdir = WalkDir::new(src_dir);
     let it = walkdir.into_iter();
 
     zip_dir(&mut it.filter_map(|e| e.ok()), src_dir, file, method)?;

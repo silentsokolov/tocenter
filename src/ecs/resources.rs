@@ -1,28 +1,17 @@
 use std::time;
 
 use ggez::audio;
-use ggez::event::{KeyCode, KeyMods};
-use ggez::graphics;
+use ggez::input::keyboard::{KeyCode, KeyMods};
 use ggez::mint as mt;
 
 use crate::consts::{GAME_TIME, PLAYER_START_ANGLE, PLAYER_START_LEVEL};
 use crate::utils;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct KeyState {
     pub key: Option<KeyCode>,
     pub mods: Option<KeyMods>,
     pub repeat: bool,
-}
-
-impl Default for KeyState {
-    fn default() -> Self {
-        Self {
-            key: Option::None,
-            mods: Option::None,
-            repeat: false,
-        }
-    }
 }
 
 pub struct GameState {
@@ -135,9 +124,10 @@ pub struct Menu {
 
 impl Menu {
     pub fn new(title: String) -> Self {
-        let mut m = Self::default();
-        m.title = title;
-        m
+        Menu {
+            title,
+            ..Default::default()
+        }
     }
 
     pub fn add_item(&mut self, action: Action, text: String, height: f32, available: bool) {
@@ -158,9 +148,4 @@ impl Menu {
 pub struct Sound {
     pub wall: Option<audio::Source>,
     pub enemy: Option<audio::Source>,
-}
-
-#[derive(Default, Debug)]
-pub struct Font {
-    pub base: Option<graphics::Font>,
 }

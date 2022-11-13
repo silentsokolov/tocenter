@@ -1,17 +1,18 @@
 [package]
 name = "tocenter"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Dmitriy Sokolov <silentsokolov@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
-ggez = "0.6.0"
-log = "0.4.8"
-env_logger = "0.6.2"
-specs = "0.15.0"
-specs-derive = "0.4.0"
-rand = "0.6.5"
+ggez = "0.8.1"
+log = "0.4.17"
+env_logger = "0.9.1"
+specs = "0.18.0"
+specs-derive = "0.4.1"
+rand = "0.8.5"
+winit = "0.27.5"
 
 [build-dependencies]
-walkdir = "2.2.9"
-zip = "0.5.0"
+walkdir = "2.3.2"
+zip = "0.6.3"

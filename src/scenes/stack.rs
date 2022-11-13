@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use ggez::input::keyboard::{KeyCode, KeyMods};
+use ggez::input::keyboard::KeyInput;
 use ggez::{Context, GameResult};
 use log::warn;
 use specs::World;
@@ -11,8 +11,7 @@ pub trait Scene: Debug {
     fn key_down_event(
         &mut self,
         ctx: &mut Context,
-        keycode: KeyCode,
-        keymods: KeyMods,
+        input: KeyInput,
         repeat: bool,
         world: &mut World,
     ) -> Result<Transition, String>;
@@ -81,15 +80,12 @@ impl SceneStack {
     pub fn key_down_event(
         &mut self,
         ctx: &mut Context,
-        keycode: KeyCode,
-        keymods: KeyMods,
+        input: KeyInput,
         repeat: bool,
         world: &mut World,
     ) {
         let scene = self.mut_scene();
-        let trans = scene
-            .key_down_event(ctx, keycode, keymods, repeat, world)
-            .unwrap();
+        let trans = scene.key_down_event(ctx, input, repeat, world).unwrap();
         self.switch(trans);
     }
 

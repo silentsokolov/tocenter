@@ -1,6 +1,5 @@
 use std::fmt;
 
-use ggez::input::keyboard::{KeyCode, KeyMods};
 use ggez::{Context, GameResult};
 use specs::prelude::*;
 use specs::{Dispatcher, DispatcherBuilder, World};
@@ -9,6 +8,7 @@ use crate::ecs::resources::Curtain;
 use crate::ecs::systems::{CurtainRender, UpdateCurtain};
 use crate::scenes::game::GameScene;
 use crate::scenes::stack::{Scene, Transition};
+use ggez::input::keyboard::KeyInput;
 
 pub struct CurtainScene<'a, 'b> {
     dispatcher: Dispatcher<'a, 'b>,
@@ -39,7 +39,6 @@ impl<'a, 'b> Scene for CurtainScene<'a, 'b> {
 
     fn update(&mut self, ctx: &mut Context, world: &mut World) -> Result<Transition, String> {
         self.dispatcher.dispatch(world);
-
         if world.fetch::<Curtain>().radius > 500.0 {
             return Ok(Transition::Pop);
         } else if world.fetch::<Curtain>().radius < 0.0 {
@@ -64,8 +63,7 @@ impl<'a, 'b> Scene for CurtainScene<'a, 'b> {
     fn key_down_event(
         &mut self,
         _ctx: &mut Context,
-        _keycode: KeyCode,
-        _keymods: KeyMods,
+        _input: KeyInput,
         _repeat: bool,
         _world: &mut World,
     ) -> Result<Transition, String> {

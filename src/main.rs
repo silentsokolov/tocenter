@@ -9,21 +9,21 @@ mod ecs;
 mod scenes;
 mod shapes;
 mod utils;
+use std::path::Path;
+use winit::dpi::LogicalSize;
 
 use std::env;
 
 use ecs::resources::{GameState, KeyState};
 use ggez::audio;
-use ggez::event::{self, EventHandler};
-use ggez::graphics::{self};
-use ggez::input::keyboard::{KeyCode, KeyMods};
-use ggez::{conf, error::GameError, timer, Context, ContextBuilder, GameResult};
+use ggez::graphics;
+use ggez::input::keyboard::KeyInput;
+use ggez::{conf, event, Context, GameResult};
 use log::info;
 use scenes::{menu::MenuScene, stack::SceneStack};
 use specs::prelude::*;
 
-use crate::ecs::resources::{Font, Sound};
-use crate::utils::{fix_path, Colour};
+use crate::ecs::resources::Sound;
 
 struct MainState {
     world: World,
@@ -31,18 +31,18 @@ struct MainState {
 }
 
 impl MainState {
-    pub fn new(ctx: &mut Context) -> MainState {
-        let wall_sound = audio::Source::new(ctx, fix_path(&ctx, "sounds/knock.flac")).unwrap();
-        let enemy_sound = audio::Source::new(ctx, fix_path(&ctx, "sounds/enemy.flac")).unwrap();
+    pub fn new(ctx: &mut Context) -> GameResult<MainState> {
+        let wall_sound = audio::Source::new(ctx, "/sounds/knock.flac").unwrap();
+        let enemy_sound = audio::Source::new(ctx, "/sounds/enemy.flac").unwrap();
         let sound = Sound {
             wall: Some(wall_sound),
             enemy: Some(enemy_sound),
         };
 
-        let base_font = graphics::Font::new(ctx, fix_path(&ctx, "fonts/monaco.ttf")).unwrap();
-        let font = Font {
-            base: Some(base_font),
-        };
+        ctx.gfx.add_font(
+            "Monaco",
+            graphics::FontData::from_path(ctx, "/fonts/monaco.ttf")?,
+        );
 
         let mut world = specs::World::new();
         world.register::<ecs::components::Position>();
@@ -54,17 +54,16 @@ impl MainState {
         world.insert(GameState::default());
         world.insert(KeyState::default());
         world.insert(sound);
-        world.insert(font);
 
         let scenes = SceneStack::new(Box::new(MenuScene::new(ctx, &mut world)));
 
-        MainState { world, scenes }
+        Ok(MainState { world, scenes })
     }
 }
 
-impl EventHandler<GameError> for MainState {
-    fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
-        while timer::check_update_time(ctx, consts::DESIRED_FPS) {
+impl event::EventHandler<ggez::GameError> for MainState {
+    fn update(&mut self, ctx: &mut Context) -> GameResult {
+        while ctx.time.check_update_time(consts::DESIRED_FPS) {
             self.scenes.update(ctx, &mut self.world)?;
             // Reset input
             let mut k = self.world.fetch_mut::<KeyState>();
@@ -73,53 +72,25 @@ impl EventHandler<GameError> for MainState {
         }
         Ok(())
     }
-    fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
-        graphics::clear(
-            ctx,
-            Colour::Bg.value(&self.world.fetch::<GameState>().theme),
-        );
-
-        #[cfg(debug_assertions)]
-        {
-            use ggez::mint as mt;
-
-            let fps = timer::fps(ctx);
-            let text = graphics::Text::new(format!("FPS: {:.0}", fps));
-
-            graphics::draw(ctx, &text, (mt::Point2 { x: 0.0, y: 0.0 },))?;
-        }
-
-        self.scenes.draw(ctx, &mut self.world)?;
-
-        graphics::present(ctx)?;
-        timer::yield_now();
-        Ok(())
+    fn draw(&mut self, ctx: &mut Context) -> GameResult {
+        self.scenes.draw(ctx, &mut self.world)
     }
 
-    fn key_down_event(
-        &mut self,
-        ctx: &mut Context,
-        keycode: KeyCode,
-        keymods: KeyMods,
-        repeat: bool,
-    ) {
+    fn key_down_event(&mut self, ctx: &mut Context, input: KeyInput, repeat: bool) -> GameResult {
         {
             let mut k = self.world.fetch_mut::<KeyState>();
-            k.key = Some(keycode);
-            k.mods = Some(keymods);
+            k.key = input.keycode;
+            k.mods = Some(input.mods);
             k.repeat = repeat;
         }
 
-        if keycode == KeyCode::Q && keymods == KeyMods::LOGO {
-            event::quit(ctx);
-        }
-
         self.scenes
-            .key_down_event(ctx, keycode, keymods, repeat, &mut self.world);
+            .key_down_event(ctx, input, repeat, &mut self.world);
+        Ok(())
     }
 }
 
-fn main() {
+fn main() -> GameResult {
     // Create logger
     #[cfg(debug_assertions)]
     {
@@ -132,32 +103,19 @@ fn main() {
     }
 
     // Find resource
-    let mut current_dir = env::current_dir().unwrap();
+    let mut current_dir = env::current_dir()?;
     current_dir.push("resources");
 
     // Make ContextBuilder
-    let mut cb = ContextBuilder::new("tocenter", "silentsokolov")
+    let mut cb = ggez::ContextBuilder::new("tocenter", "silentsokolov")
         .with_conf_file(false)
-        .window_setup(
-            conf::WindowSetup::default()
-                .title("ToCenter")
-                .samples(if cfg!(target_os = "windows") {
-                    conf::NumSamples::Two
-                } else {
-                    conf::NumSamples::Four
-                })
-                .vsync(if cfg!(target_os = "windows") {
-                    false
-                } else {
-                    true
-                }),
-        )
-        .window_mode(
-            conf::WindowMode::default()
-                .dimensions(500.0, 500.0)
-                .min_dimensions(500.0, 500.0)
-                .resizable(false),
-        );
+        .window_setup(conf::WindowSetup::default().title("ToCenter"))
+        .window_mode(conf::WindowMode {
+            resizable: false,
+            borderless: true,
+            logical_size: Some(LogicalSize::new(500.0, 500.0)),
+            ..Default::default()
+        });
 
     #[cfg(debug_assertions)]
     {
@@ -171,13 +129,10 @@ fn main() {
         cb = cb.add_zipfile_bytes(include_bytes!("../resources.zip").to_vec());
     }
 
-    let (mut ctx, event_loop) = cb.build().unwrap();
+    let (mut ctx, event_loop) = cb.build()?;
+    ctx.gfx.set_window_icon(&ctx, Path::new("/128x128.png"))?;
 
-    // graphics::set_window_icon(&mut ctx, Some(fix_path(&mut ctx, "128x128.ico"))).unwrap();
-
-    // Create game state
-    let state = MainState::new(&mut ctx);
-
+    let state = MainState::new(&mut ctx)?;
     // Run
     event::run(ctx, event_loop, state)
 }

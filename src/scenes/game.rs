@@ -1,6 +1,6 @@
 use std::fmt;
 
-use ggez::input::keyboard::{KeyCode, KeyMods};
+use ggez::input::keyboard::KeyCode;
 use ggez::{Context, GameResult};
 use rand::Rng;
 use specs::prelude::*;
@@ -16,6 +16,7 @@ use crate::scenes::gameover::GameOverScene;
 use crate::scenes::pause::PauseScene;
 use crate::scenes::stack::{Scene, Transition};
 use crate::utils::{self, Direction, GameStatus};
+use ggez::input::keyboard::KeyInput;
 
 pub struct GameScene<'a, 'b> {
     dispatcher: Dispatcher<'a, 'b>,
@@ -45,7 +46,7 @@ impl<'a, 'b> GameScene<'a, 'b> {
         for level in 1..=7 {
             let element_map = utils::create_map_of_element(level);
             for (angle, size) in element_map {
-                let color = rand::thread_rng().gen_range(0, 2);
+                let color = rand::thread_rng().gen_range(0..2);
                 let mut builder = world
                     .create_entity()
                     .with(Position::new(level as i32, angle))
@@ -86,7 +87,7 @@ impl<'a, 'b> Scene for GameScene<'a, 'b> {
         let status = world.fetch::<GameState>().status.clone();
         let score = world.fetch::<GameTime>().timer.as_secs();
 
-        match status {
+        return match status {
             Some(GameStatus::GameOver) => {
                 world.delete_all();
                 world.maintain();
@@ -104,7 +105,7 @@ impl<'a, 'b> Scene for GameScene<'a, 'b> {
                 Ok(Transition::Push(Box::new(CurtainScene::new(world, false))))
             }
             None => Ok(Transition::None),
-        }
+        };
     }
 
     fn draw(&mut self, ctx: &mut Context, world: &mut World) -> GameResult {
@@ -116,15 +117,13 @@ impl<'a, 'b> Scene for GameScene<'a, 'b> {
     fn key_down_event(
         &mut self,
         ctx: &mut Context,
-        keycode: KeyCode,
-        _keymods: KeyMods,
+        input: KeyInput,
         _repeat: bool,
         world: &mut World,
     ) -> Result<Transition, String> {
-        if keycode == KeyCode::Escape {
-            Ok(Transition::Push(Box::new(PauseScene::new(ctx, world))))
-        } else {
-            Ok(Transition::None)
+        match input.keycode {
+            Some(KeyCode::Return) => Ok(Transition::Push(Box::new(PauseScene::new(ctx, world)))),
+            _ => Ok(Transition::None),
         }
     }
 

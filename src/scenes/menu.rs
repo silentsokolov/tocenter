@@ -1,7 +1,6 @@
 use std::fmt;
 
-use ggez::event;
-use ggez::input::keyboard::{KeyCode, KeyMods};
+use ggez::input::keyboard::KeyCode;
 use ggez::{Context, GameResult};
 use specs::prelude::*;
 
@@ -10,6 +9,7 @@ use crate::ecs::systems::{MenuRender, UpdateGlobalState, UpdateMenu};
 use crate::scenes::curtain::CurtainScene;
 use crate::scenes::game::GameScene;
 use crate::scenes::stack::{Scene, Transition};
+use ggez::input::keyboard::KeyInput;
 
 pub struct MenuScene<'a, 'b> {
     dispatcher: Dispatcher<'a, 'b>,
@@ -49,29 +49,29 @@ impl<'a, 'b> Scene for MenuScene<'a, 'b> {
     fn key_down_event(
         &mut self,
         ctx: &mut Context,
-        keycode: KeyCode,
-        _keymods: KeyMods,
+        input: KeyInput,
         _repeat: bool,
         world: &mut World,
     ) -> Result<Transition, String> {
-        if keycode == KeyCode::Return {
-            let action = world.fetch::<Menu>().get_currect_action();
-            match action {
-                Action::EndlessMode => Ok(Transition::MultiReplace(
-                    vec![
-                        Box::new(GameScene::new(ctx, world)),
-                        Box::new(CurtainScene::new(world, true)),
-                    ],
-                    1,
-                )),
-                Action::Quit => {
-                    event::quit(ctx);
-                    Ok(Transition::None)
+        match input.keycode {
+            Some(KeyCode::Return) => {
+                let action = world.fetch::<Menu>().get_currect_action();
+                match action {
+                    Action::EndlessMode => Ok(Transition::MultiReplace(
+                        vec![
+                            Box::new(GameScene::new(ctx, world)),
+                            Box::new(CurtainScene::new(world, true)),
+                        ],
+                        1,
+                    )),
+                    Action::Quit => {
+                        ctx.request_quit();
+                        Ok(Transition::None)
+                    }
+                    _ => Ok(Transition::None),
                 }
-                _ => Ok(Transition::None),
             }
-        } else {
-            Ok(Transition::None)
+            _ => Ok(Transition::None),
         }
     }
 

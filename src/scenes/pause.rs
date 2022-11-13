@@ -1,13 +1,13 @@
 use std::fmt;
 
-use ggez::event;
-use ggez::input::keyboard::{KeyCode, KeyMods};
+use ggez::input::keyboard::KeyCode;
 use ggez::{Context, GameResult};
 use specs::prelude::*;
 
 use crate::ecs::resources::{Action, Menu};
 use crate::ecs::systems::{MenuRender, UpdateGlobalState, UpdateMenu};
 use crate::scenes::stack::{Scene, Transition};
+use ggez::input::keyboard::KeyInput;
 
 pub struct PauseScene<'a, 'b> {
     dispatcher: Dispatcher<'a, 'b>,
@@ -46,25 +46,24 @@ impl<'a, 'b> Scene for PauseScene<'a, 'b> {
     fn key_down_event(
         &mut self,
         ctx: &mut Context,
-        keycode: KeyCode,
-        _keymods: KeyMods,
+        input: KeyInput,
         _repeat: bool,
         world: &mut World,
     ) -> Result<Transition, String> {
-        if keycode == KeyCode::Return {
-            let action = world.fetch::<Menu>().get_currect_action();
-            match action {
-                Action::Continue => Ok(Transition::Pop),
-                Action::Quit => {
-                    event::quit(ctx);
-                    Ok(Transition::None)
+        match input.keycode {
+            Some(KeyCode::Return) => {
+                let action = world.fetch::<Menu>().get_currect_action();
+                match action {
+                    Action::Continue => Ok(Transition::Pop),
+                    Action::Quit => {
+                        ctx.request_quit();
+                        Ok(Transition::None)
+                    }
+                    _ => Ok(Transition::None),
                 }
-                _ => Ok(Transition::None),
             }
-        } else if keycode == KeyCode::Escape {
-            Ok(Transition::Pop)
-        } else {
-            Ok(Transition::None)
+            Some(KeyCode::Escape) => Ok(Transition::Pop),
+            _ => Ok(Transition::None),
         }
     }
 
