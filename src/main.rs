@@ -24,6 +24,7 @@ use scenes::{menu::MenuScene, stack::SceneStack};
 use specs::prelude::*;
 
 use crate::ecs::resources::Sound;
+use crate::utils::Colour;
 
 struct MainState {
     world: World,
@@ -73,7 +74,12 @@ impl event::EventHandler<ggez::GameError> for MainState {
         Ok(())
     }
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        self.scenes.draw(ctx, &mut self.world)
+        let mut canvas = graphics::Canvas::from_frame(
+            ctx,
+            Colour::Bg.value(&self.world.fetch::<GameState>().theme),
+        );
+        self.scenes.draw(ctx, &mut self.world, &mut canvas)?;
+        canvas.finish(ctx)
     }
 
     fn key_down_event(&mut self, ctx: &mut Context, input: KeyInput, repeat: bool) -> GameResult {

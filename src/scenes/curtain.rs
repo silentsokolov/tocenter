@@ -1,5 +1,7 @@
 use std::fmt;
 
+use ggez::graphics::Canvas;
+use ggez::input::keyboard::KeyInput;
 use ggez::{Context, GameResult};
 use specs::prelude::*;
 use specs::{Dispatcher, DispatcherBuilder, World};
@@ -8,7 +10,6 @@ use crate::ecs::resources::Curtain;
 use crate::ecs::systems::{CurtainRender, UpdateCurtain};
 use crate::scenes::game::GameScene;
 use crate::scenes::stack::{Scene, Transition};
-use ggez::input::keyboard::KeyInput;
 
 pub struct CurtainScene<'a, 'b> {
     dispatcher: Dispatcher<'a, 'b>,
@@ -54,8 +55,8 @@ impl<'a, 'b> Scene for CurtainScene<'a, 'b> {
         Ok(Transition::None)
     }
 
-    fn draw(&mut self, ctx: &mut Context, world: &mut World) -> GameResult {
-        let mut rs = CurtainRender::new(ctx);
+    fn draw(&mut self, ctx: &mut Context, world: &mut World, canvas: &mut Canvas) -> GameResult {
+        let mut rs = CurtainRender::new(ctx, canvas);
         rs.run_now(world);
         Ok(())
     }

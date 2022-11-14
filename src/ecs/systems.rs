@@ -398,7 +398,6 @@ impl<'a> System<'a> for UpdateMenu {
             Some(KeyCode::J) | Some(KeyCode::Up) | Some(KeyCode::Numpad8) => {
                 if let Some(x) = menu.current_item.checked_sub(1) {
                     menu.current_item = x;
-                    // return;
                 };
             }
             Some(_) => (),
@@ -409,65 +408,12 @@ impl<'a> System<'a> for UpdateMenu {
 
 pub struct GameRender<'c> {
     ctx: &'c mut Context,
+    canvas: &'c mut graphics::Canvas,
 }
 
 impl<'c> GameRender<'c> {
-    pub fn new(ctx: &'c mut Context) -> GameRender<'c> {
-        GameRender { ctx }
-    }
-
-    pub fn render_timer(
-        &mut self,
-        canvas: &mut graphics::Canvas,
-        secs: u64,
-        millis: u32,
-        size: (f32, f32),
-        theme: &Theme,
-    ) {
-        canvas.draw(
-            graphics::Text::new(format!("{:0>2}", secs))
-                .set_font("Monaco")
-                .set_scale(100.),
-            DrawParam::default()
-                .dest([size.0 / 2. - 48., size.1 / 2. - 60.])
-                .color(Colour::Bg.value(theme)),
-        );
-
-        canvas.draw(
-            graphics::Text::new(format!("{:0>3}", millis))
-                .set_font("Monaco")
-                .set_scale(40.),
-            DrawParam::default()
-                .dest([size.0 / 2. - 30., size.1 / 2. + 20.])
-                .color(Colour::Bg.value(theme)),
-        );
-    }
-
-    pub fn render_game_result(
-        &mut self,
-        canvas: &mut graphics::Canvas,
-        lvl: u32,
-        score: u64,
-        size: (f32, f32),
-        theme: &Theme,
-    ) {
-        canvas.draw(
-            graphics::Text::new(format!("Level: {}", lvl))
-                .set_font("Monaco")
-                .set_scale(30.),
-            DrawParam::default()
-                .dest([size.0 - size.0 / 8., 5.])
-                .color(Colour::Fg.value(theme)),
-        );
-
-        canvas.draw(
-            graphics::Text::new(format!("Score: {}", score))
-                .set_font("Monaco")
-                .set_scale(30.),
-            DrawParam::default()
-                .dest([size.0 - size.0 / 8., 30.])
-                .color(Colour::Fg.value(theme)),
-        );
+    pub fn new(ctx: &'c mut Context, canvas: &'c mut graphics::Canvas) -> GameRender<'c> {
+        GameRender { ctx, canvas }
     }
 }
 
@@ -484,7 +430,6 @@ impl<'a, 'c> System<'a> for GameRender<'c> {
 
     fn run(&mut self, data: Self::SystemData) {
         let (entities, gs, gt, enemy, pos, view, player) = data;
-        let mut canvas = graphics::Canvas::from_frame(self.ctx, Colour::Bg.value(&gs.theme));
 
         let size = self.ctx.gfx.size();
 
@@ -562,33 +507,61 @@ impl<'a, 'c> System<'a> for GameRender<'c> {
 
         let ms = mesh.build();
 
-        canvas.draw(
+        self.canvas.draw(
             &graphics::Mesh::from_data(self.ctx, ms),
             DrawParam::default()
                 .dest([size.0 / 2., size.1 / 2.])
                 .color(Colour::Fg.value(&gs.theme)),
         );
-        // GameRender text
-        self.render_timer(
-            &mut canvas,
-            gt.timer.as_secs(),
-            gt.timer.subsec_millis(),
-            size,
-            &gs.theme,
-        );
-        self.render_game_result(&mut canvas, gs.game_level, gs.score, size, &gs.theme);
 
-        canvas.finish(self.ctx).unwrap();
+        // Render time
+        self.canvas.draw(
+            graphics::Text::new(format!("{:0>2}", gt.timer.as_secs()))
+                .set_font("Monaco")
+                .set_scale(100.),
+            DrawParam::default()
+                .dest([size.0 / 2. - 48., size.1 / 2. - 60.])
+                .color(Colour::Bg.value(&gs.theme)),
+        );
+
+        self.canvas.draw(
+            graphics::Text::new(format!("{:0>3}", gt.timer.subsec_millis()))
+                .set_font("Monaco")
+                .set_scale(40.),
+            DrawParam::default()
+                .dest([size.0 / 2. - 30., size.1 / 2. + 20.])
+                .color(Colour::Bg.value(&gs.theme)),
+        );
+
+        // Render game result
+        self.canvas.draw(
+            graphics::Text::new(format!("Level: {}", gs.game_level))
+                .set_font("Monaco")
+                .set_scale(30.),
+            DrawParam::default()
+                .dest([size.0 - size.0 / 8., 5.])
+                .color(Colour::Fg.value(&gs.theme)),
+        );
+
+        self.canvas.draw(
+            graphics::Text::new(format!("Score: {}", gs.score))
+                .set_font("Monaco")
+                .set_scale(30.),
+            DrawParam::default()
+                .dest([size.0 - size.0 / 8., 30.])
+                .color(Colour::Fg.value(&gs.theme)),
+        );
     }
 }
 
 pub struct CurtainRender<'c> {
     ctx: &'c mut Context,
+    canvas: &'c mut graphics::Canvas,
 }
 
 impl<'c> CurtainRender<'c> {
-    pub fn new(ctx: &'c mut Context) -> CurtainRender<'c> {
-        CurtainRender { ctx }
+    pub fn new(ctx: &'c mut Context, canvas: &'c mut graphics::Canvas) -> CurtainRender<'c> {
+        CurtainRender { ctx, canvas }
     }
 }
 
@@ -596,17 +569,13 @@ impl<'a, 'c> System<'a> for CurtainRender<'c> {
     type SystemData = (Read<'a, GameState>, Read<'a, Curtain>);
 
     fn run(&mut self, (gs, curtain): Self::SystemData) {
-        // println!("{:?} {:?} {:?}", gs.theme, curtain.radius, Colour::Border.value(&gs.theme));
-        // let mut canvas = graphics::Canvas::from_frame(self.ctx, Colour::Bg.value(&gs.theme));
         let mesh = &mut MeshBuilder::new();
-
-        let size = self.ctx.gfx.size();
 
         let points = shapes::arc(
             curtain.radius,
             0.0,
             consts::PI_2,
-            1000.0 + size.1, // remove
+            1000.0,
             false,
             consts::DEFAULT_TOLERANCE,
         );
@@ -627,27 +596,25 @@ impl<'a, 'c> System<'a> for CurtainRender<'c> {
         )
         .unwrap();
 
-        mesh.build();
-        // let ms = mesh.build();
+        let ms = mesh.build();
 
-        // canvas.draw(
-        //     &graphics::Mesh::from_data(self.ctx, ms),
-        //     DrawParam::default()
-        //         .dest([curtain.point.x + 500., curtain.point.y + 500. / 2.])
-        //         .color(Colour::Fg.value(&gs.theme)),
-        // );
-
-        // canvas.finish(self.ctx).unwrap();
+        self.canvas.draw(
+            &graphics::Mesh::from_data(self.ctx, ms),
+            DrawParam::default()
+                .dest([curtain.point.x + 500., curtain.point.y + 90.])
+                .color(Colour::Fg.value(&gs.theme)),
+        );
     }
 }
 
 pub struct MenuRender<'c> {
     ctx: &'c mut Context,
+    canvas: &'c mut graphics::Canvas,
 }
 
 impl<'c> MenuRender<'c> {
-    pub fn new(ctx: &'c mut Context) -> MenuRender<'c> {
-        MenuRender { ctx }
+    pub fn new(ctx: &'c mut Context, canvas: &'c mut graphics::Canvas) -> MenuRender<'c> {
+        MenuRender { ctx, canvas }
     }
 }
 
@@ -655,11 +622,9 @@ impl<'a, 'c> System<'a> for MenuRender<'c> {
     type SystemData = (Read<'a, GameState>, Read<'a, Menu>);
 
     fn run(&mut self, (gs, menu): Self::SystemData) {
-        let mut canvas = graphics::Canvas::from_frame(self.ctx, Colour::Bg.value(&gs.theme));
-
         let mut y = 300.;
 
-        canvas.draw(
+        self.canvas.draw(
             graphics::Text::new(menu.title.to_uppercase())
                 .set_font("Monaco")
                 .set_scale(60.),
@@ -670,7 +635,7 @@ impl<'a, 'c> System<'a> for MenuRender<'c> {
 
         if !menu.subtitle.is_empty() {
             y += 80.0;
-            canvas.draw(
+            self.canvas.draw(
                 graphics::Text::new(menu.subtitle.to_lowercase())
                     .set_font("Monaco")
                     .set_scale(60.),
@@ -683,7 +648,7 @@ impl<'a, 'c> System<'a> for MenuRender<'c> {
         y += 60.0;
         for (i, item) in menu.items.iter().enumerate() {
             y += 30.0 + item.height;
-            canvas.draw(
+            self.canvas.draw(
                 graphics::Text::new(if menu.current_item == i {
                     format!("> [{}]", item.text)
                 } else {
@@ -705,7 +670,7 @@ impl<'a, 'c> System<'a> for MenuRender<'c> {
             );
         }
 
-        canvas.draw(
+        self.canvas.draw(
             graphics::Text::new(format!("[F2] control: {}", gs.control))
                 .set_font("Monaco")
                 .set_scale(25.),
@@ -714,7 +679,7 @@ impl<'a, 'c> System<'a> for MenuRender<'c> {
                 .color(Colour::Fg.value(&gs.theme)),
         );
 
-        canvas.draw(
+        self.canvas.draw(
             graphics::Text::new(format!("[F3] theme: {}", gs.theme))
                 .set_font("Monaco")
                 .set_scale(25.),
@@ -722,8 +687,6 @@ impl<'a, 'c> System<'a> for MenuRender<'c> {
                 .dest([750., 950.])
                 .color(Colour::Fg.value(&gs.theme)),
         );
-
-        canvas.finish(self.ctx).unwrap();
     }
 }
 

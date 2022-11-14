@@ -1,6 +1,8 @@
 use std::fmt;
 
+use ggez::graphics::Canvas;
 use ggez::input::keyboard::KeyCode;
+use ggez::input::keyboard::KeyInput;
 use ggez::{Context, GameResult};
 use rand::Rng;
 use specs::prelude::*;
@@ -11,12 +13,12 @@ use crate::ecs::resources::{GameState, GameTime};
 use crate::ecs::systems::{
     Collision, GameRender, Music, UpdateGameState, UpdatePosition, UpdateTimer,
 };
+
 use crate::scenes::curtain::CurtainScene;
 use crate::scenes::gameover::GameOverScene;
 use crate::scenes::pause::PauseScene;
 use crate::scenes::stack::{Scene, Transition};
 use crate::utils::{self, Direction, GameStatus};
-use ggez::input::keyboard::KeyInput;
 
 pub struct GameScene<'a, 'b> {
     dispatcher: Dispatcher<'a, 'b>,
@@ -108,8 +110,8 @@ impl<'a, 'b> Scene for GameScene<'a, 'b> {
         };
     }
 
-    fn draw(&mut self, ctx: &mut Context, world: &mut World) -> GameResult {
-        let mut rrs = GameRender::new(ctx);
+    fn draw(&mut self, ctx: &mut Context, world: &mut World, canvas: &mut Canvas) -> GameResult {
+        let mut rrs = GameRender::new(ctx, canvas);
         rrs.run_now(world);
         Ok(())
     }

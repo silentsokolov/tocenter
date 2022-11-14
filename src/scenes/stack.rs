@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use ggez::graphics::Canvas;
 use ggez::input::keyboard::KeyInput;
 use ggez::{Context, GameResult};
 use log::warn;
@@ -7,7 +8,7 @@ use specs::World;
 
 pub trait Scene: Debug {
     fn update(&mut self, ctx: &mut Context, world: &mut World) -> Result<Transition, String>;
-    fn draw(&mut self, ctx: &mut Context, world: &mut World) -> GameResult;
+    fn draw(&mut self, ctx: &mut Context, world: &mut World, canvas: &mut Canvas) -> GameResult;
     fn key_down_event(
         &mut self,
         ctx: &mut Context,
@@ -58,21 +59,27 @@ impl SceneStack {
         Ok(())
     }
 
-    pub fn draw(&mut self, ctx: &mut Context, world: &mut World) -> GameResult {
-        SceneStack::draw_scenes(&mut self.scenes, ctx, world)
+    pub fn draw(
+        &mut self,
+        ctx: &mut Context,
+        world: &mut World,
+        canvas: &mut Canvas,
+    ) -> GameResult {
+        SceneStack::draw_scenes(&mut self.scenes, ctx, world, canvas)
     }
 
     fn draw_scenes(
         scenes: &mut [Box<dyn Scene>],
         ctx: &mut Context,
         world: &mut World,
+        canvas: &mut Canvas,
     ) -> GameResult {
         assert!(!scenes.is_empty());
         if let Some((current, rest)) = scenes.split_last_mut() {
             if current.draw_previous() {
-                SceneStack::draw_scenes(rest, ctx, world)?
+                SceneStack::draw_scenes(rest, ctx, world, canvas)?
             }
-            current.draw(ctx, world)?
+            current.draw(ctx, world, canvas)?
         }
         Ok(())
     }
